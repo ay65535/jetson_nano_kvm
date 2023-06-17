@@ -195,31 +195,41 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegr
 # Generates our modified device file trees
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target dtbs
 # Installs the modules on the build folder ~/Linux_for_Tegra/source/public/build
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra INSTALL_MOD_PATH=$KERNEL_MODULES_OUT modules_install
+make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra INSTALL_MOD_PATH=${KERNEL_MODULES_OUT:?} modules_install
 
-# Now that we have our Image, the drivers and the file trees, we should override them, but before, make a manual backup of folders we're gonna change so you can rollback if something goes wrong.
-sudo cp /boot /boot_original
-sudo cp -r /lib /lib_original
+# Now that we have our Image, the drivers and the file trees, we should override them,
+# but before, make a manual backup of folders we're gonna change so you can rollback if something goes wrong.
+sudo cp -r /boot /boot.orig
+sudo cp -r /lib /lib.orig
 
 cd $JETSON_NANO_KERNEL_SOURCE/modules/lib/ || exit
-sudo cp -r firmware /lib/firmware
-sudo cp -r modules /lib/modules
-
-# Now we can `rsync` the files with the system ones (warning, untested, I used `sudo nautilus` and moved by hand on mine).
-rsync -avh firmware /lib/firmware
-rsync -avh modules /lib/modules
+ls -la /lib/firmware
+ls -la ./firmware
+rsync -n -rltDv ./firmware/ /lib/firmware
+sudo rsync -rltDv ./firmware/ /lib/firmware
+ls -la /lib/modules
+ls -la ./modules
+rsync -n -rltDv ./modules/ /lib/modules
+sudo rsync -rltDv ./modules/ /lib/modules
 
 # Now we must also update the boot folder:
-cd $JETSON_NANO_KERNEL_SOURCE/build/arc/arm64/ || exit
-rsync -avh boot /boot
+cd $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/ || exit
+ls -la /boot
+ls -la ./boot
+rsync -nrltDv ./boot/ /boot
+sudo rsync -rltDv ./boot/ /boot
 
 # Notice that we copied all of the dtb files, there are many for different models, but just one that we should use. Run
-sudo dmesg | grep -i kernel
+sudo dmesg | grep -i kernel | grep DTS
 # to discover yours. Example of mine:
-# => [    0.236710] DTS File Name: /home/lz/Linux_for_Tegra/source/public/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a00.dts
+# => [    0.207623] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# => [    0.412171] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
 
-# Wait, wtf? Why this is a local file? I don't know what's happening, but this should show you which one is being used. You're gonna need its name. The file is already at `/boot`.
-# You might wonder that since we replaced all the device tree files on `/boot`, then it should load the modified one already. Somehow, in my case, it didn't. I think it has to do with the fact that it's loading a local one like shown above. If you know how to change this, open an issue please. Anyways, to bypass this, we have to inform the `/boot/extlinux/extlinux.conf` where to locate our file. Change from
+# Wait, wtf? Why this is a local file? I don't know what's happening, but this should show you which one is being used.
+# You're gonna need its name. The file is already at `/boot`.
+# You might wonder that since we replaced all the device tree files on `/boot`, then it should load the modified one already.
+# Somehow, in my case, it didn't. I think it has to do with the fact that it's loading a local one like shown above.
+# If you know how to change this, open an issue please. Anyways, to bypass this, we have to inform the `/boot/extlinux/extlinux.conf` where to locate our file. Change from
 # TIMEOUT 30
 # DEFAULT primary
 #
@@ -231,6 +241,7 @@ sudo dmesg | grep -i kernel
 #       INITRD /boot/initrd
 #       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 loglevel=7 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0
 
+code /boot/extlinux/extlinux.conf
 # to
 # TIMEOUT 30
 # DEFAULT primary
@@ -248,10 +259,21 @@ sudo dmesg | grep -i kernel
 
 # Note that you can add a second testing profile, which can be selected at boot time if you have a serial device to plug into the jetson nano like in this video https://www.youtube.com/watch?v=Kwpxhw41W50. When you boot you can select your second `LABEL` by typing its number. This is useful if you want to test different `Image`s without substituting the original one like we did.
 
-# Now reboot, and then run `ls /dev | grep kvm` to confirm if the `kvm` file exists. This means it's working. You should also run
-ls /proc/device-tree/interrupt-controller
-compatible '#interrupt-cells' interrupt-controller interrupt-parent interrupts linux,phandle name phandle reg status
+# Now reboot, and then run:
+ls /dev | grep kvm
+# to confirm if the `kvm` file exists. This means it's working. You should also run
 
+ls /proc/device-tree/interrupt-controller
+# Doc:
+# => compatible '#interrupt-cells' interrupt-controller interrupt-parent interrupts linux,phandle name phandle reg status
+# Before:
+# => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
+# After:
+# => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # and see that the node `interrupts`, which didn't exist before, was added. This means the irc interrupt activation worked.
+
+sudo dmesg | grep -i interrupts
+# After:
+# => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 
 # You can run qemu/firecracker now. I only tested with firecracker though.
