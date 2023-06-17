@@ -31,8 +31,13 @@ cat /proc/version
 # Linux version 4.9.299-tegra (buildbrain@mobile-u64-5333-d8000)
 # (gcc version 7.3.1 20180425 [linaro-7.3-2018.05 revision d29120a424ecfbc167ef90065c0eeb7f91977701] (Linaro GCC 7.3-2018.05) )
 # #1 SMP PREEMPT Tue Nov 22 09:24:39 PST 2022
+# =>
+# Linux version 4.9.299-tegra (jetson@jetson-nano)
+# (gcc version 7.5.0 (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) )
+# #1 SMP PREEMPT Sat Jun 17 16:52:07 JST 2023
 uname -a
 # => Linux jetson-nano 4.9.299-tegra #1 SMP PREEMPT Tue Nov 22 09:24:39 PST 2022 aarch64 aarch64 aarch64 GNU/Linux
+# => Linux jetson-nano 4.9.299-tegra #1 SMP PREEMPT Sat Jun 17 16:52:07 JST 2023 aarch64 aarch64 aarch64 GNU/Linux
 
 #
 # Documents
@@ -77,6 +82,8 @@ ls -A "$TARGET"
 rm ~/public_sources.tbz2
 ls -A ~
 
+JETSON_NANO_KERNEL_SOURCE=$TARGET/source/public
+
 # The linux kernel has a config file which dictates which kernel options are enabled in the compilation process.
 # What we need to do is enable these options, which are
 # CONFIG_KVM=y
@@ -99,15 +106,18 @@ sudo apt update && sudo apt-get install -y build-essential bc git curl wget xxd 
 # クロスコンパイル時にのみ必要？
 #
 
-# wget http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
-# mkdir "$HOME/l4t-gcc"
-# cd "$HOME/l4t-gcc" || exit
-# tar -xf ../gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+#wget -O ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+wget -O ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz https://developer.nvidia.com/embedded/dlc/l4t-gcc-7-3-1-toolchain-64-bit
+
+mkdir "$HOME/l4t-gcc"
+cd "$HOME/l4t-gcc" || exit
+tar -xf ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 
 # 1.Set the shell variable with the command:
-#TEGRA_KERNEL_OUT=<outdir>
+TEGRA_KERNEL_OUT=$JETSON_NANO_KERNEL_SOURCE/build
 # Where:
 #   <outdir> is the desired destination for the compiled kernel.
+KERNEL_MODULES_OUT=$JETSON_NANO_KERNEL_SOURCE/modules
 
 # 2.If cross-compiling on a non-Jetson system, export the following environment variables:
 #export CROSS_COMPILE=$HOME/l4t-gcc/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
@@ -125,12 +135,12 @@ cd ~ || exit
 wget -O public_sources.tbz2 https://developer.nvidia.com/downloads/remack-sdksjetpack-463r32releasev73sourcest210publicsourcestbz2 # 32.7.3
 tar -xf public_sources.tbz2
 
-JETSON_NANO_KERNEL_SOURCE=~/Linux_for_Tegra/source/public
 ls -A $JETSON_NANO_KERNEL_SOURCE
 # mkdir -p $JETSON_NANO_KERNEL_SOURCE/kernel_src
 # ls -A $JETSON_NANO_KERNEL_SOURCE/kernel_src
 # cd $JETSON_NANO_KERNEL_SOURCE/kernel_src || exit
 cd $JETSON_NANO_KERNEL_SOURCE || exit
+ls -la ./kernel_src.tbz2
 tar -xf ./kernel_src.tbz2
 # =>
 # hardware/
@@ -142,7 +152,7 @@ tar -xf ./kernel_src.tbz2
 ls -A $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9
 cd $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9 || exit
 [ -f arch/arm64/configs/tegra_defconfig ] && ! grep 'CONFIG_KVM=y' arch/arm64/configs/tegra_defconfig &&
-  echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m" >>arch/arm64/configs/tegra_defconfig
+  echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m\nCONFIG_VHOST_VSOCK=m" >>arch/arm64/configs/tegra_defconfig
 
 # Compiling the kernel now would already activate KVM, but we would still miss an important feature
 # that makes virtualization much faster: the irq chip.
@@ -183,8 +193,6 @@ diff -u $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-
 # we'll also compile device tree files from this `dsti` file.
 
 # Now we should compile everything:
-TEGRA_KERNEL_OUT=$JETSON_NANO_KERNEL_SOURCE/build
-KERNEL_MODULES_OUT=$JETSON_NANO_KERNEL_SOURCE/modules
 cd $JETSON_NANO_KERNEL_SOURCE || exit
 # Generates the config file (you should manually enable/disable some missing by pressing y/n and enter)
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra tegra_defconfig
@@ -199,31 +207,37 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegr
 
 # Now that we have our Image, the drivers and the file trees, we should override them,
 # but before, make a manual backup of folders we're gonna change so you can rollback if something goes wrong.
-sudo cp -r /boot /boot.orig
-sudo cp -r /lib /lib.orig
+[ ! -d /boot.orig ] && sudo rsync -navh --delete /boot/ /boot.orig
+[ ! -d /lib.orig ] && sudo rsync -navh --delete /lib/ /lib.orig
 
-cd $JETSON_NANO_KERNEL_SOURCE/modules/lib/ || exit
+cd $KERNEL_MODULES_OUT/lib/ || exit
 ls -la /lib/firmware
 ls -la ./firmware
 rsync -n -rltDv ./firmware/ /lib/firmware
 sudo rsync -rltDv ./firmware/ /lib/firmware
-ls -la /lib/modules
-ls -la ./modules
+ls -la /lib/modules/4.9.299-tegra
+ls -la ./modules/4.9.299-tegra
 rsync -n -rltDv ./modules/ /lib/modules
 sudo rsync -rltDv ./modules/ /lib/modules
 
 # Now we must also update the boot folder:
-cd $JETSON_NANO_KERNEL_SOURCE/build/arch/arm64/ || exit
+cd $TEGRA_KERNEL_OUT/arch/arm64/ || exit
 ls -la /boot
 ls -la ./boot
 rsync -nrltDv ./boot/ /boot
 sudo rsync -rltDv ./boot/ /boot
 
+find /lib/firmware /lib/modules /boot ! -user root
+
 # Notice that we copied all of the dtb files, there are many for different models, but just one that we should use. Run
 sudo dmesg | grep -i kernel | grep DTS
 # to discover yours. Example of mine:
-# => [    0.207623] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
-# => [    0.412171] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# =>
+# [    0.207623] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# [    0.412171] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# =>
+# [    0.232381] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# [    0.440429] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
 
 # Wait, wtf? Why this is a local file? I don't know what's happening, but this should show you which one is being used.
 # You're gonna need its name. The file is already at `/boot`.
@@ -241,6 +255,7 @@ sudo dmesg | grep -i kernel | grep DTS
 #       INITRD /boot/initrd
 #       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 loglevel=7 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0
 
+ls -laF /boot/tegra210-p3448-0000-p3449-0000-a02.dt*
 code /boot/extlinux/extlinux.conf
 # to
 # TIMEOUT 30
@@ -260,7 +275,7 @@ code /boot/extlinux/extlinux.conf
 # Note that you can add a second testing profile, which can be selected at boot time if you have a serial device to plug into the jetson nano like in this video https://www.youtube.com/watch?v=Kwpxhw41W50. When you boot you can select your second `LABEL` by typing its number. This is useful if you want to test different `Image`s without substituting the original one like we did.
 
 # Now reboot, and then run:
-ls /dev | grep kvm
+ls /dev/kvm
 # to confirm if the `kvm` file exists. This means it's working. You should also run
 
 ls /proc/device-tree/interrupt-controller
@@ -270,10 +285,28 @@ ls /proc/device-tree/interrupt-controller
 # => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # After:
 # => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
+# => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # and see that the node `interrupts`, which didn't exist before, was added. This means the irc interrupt activation worked.
 
 sudo dmesg | grep -i interrupts
 # After:
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
+# => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
+
+sudo dmesg | grep -iE 'vhost|vsock|kvm|virtio'
 
 # You can run qemu/firecracker now. I only tested with firecracker though.
+
+lsmod | grep -E 'vhost|vsock|kvm|virtio'
+# =>
+# vhost_net              15023  0
+# vhost                  52361  1 vhost_net
+# macvtap                21473  1 vhost_net
+# =>
+# vhost_net              15023  0
+# vhost                  52361  1 vhost_net
+# macvtap                21473  1 vhost_net
+
+cat /etc/modules
+# =>
+# vhost_net
