@@ -98,11 +98,10 @@ export LOCALVERSION=-tegra
 
 cd $TARGET
 ls -A "$TARGET"
-cp "$TEGRA_KERNEL_OUT"/.config.template $TARGET/
+cp "${TEGRA_KERNEL_OUT:?}"/.config.template $TARGET/
 # rm -rf "${JETSON_NANO_KERNEL_SOURCE:?}"
 # rm -rf "$TARGET/l4t-gcc"
 # rm "$TARGET"/public_sources.tbz2
-
 
 # The linux kernel has a config file which dictates which kernel options are enabled in the compilation process.
 # What we need to do is enable these options, which are
@@ -165,7 +164,7 @@ cd $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9 || exit
 # `Linux_for_Tegra/source/public/hardware/nvidia/soc/t210/kernel-dts/tegra210-soc/tegra210-bthrot-cdev.dtsi`.
 # Don't use the patch tool as it'll likely not work, just do it by hand:
 
-grep '0x0 0x50042000 0x0 0x0100' -r $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-soc
+grep -A5 '0x0 0x50041000 0x0 0x1000' -r $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-soc
 
 # cp $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-soc/tegra210-soc-base.dtsi{,.orig}
 sed -i.orig -e 's/0x0 0x50042000 0x0 0x0100>;/0x0 0x50042000 0x0 0x2000\n\t\t       0x0 0x50044000 0x0 0x2000\n\t\t       0x0 0x50046000 0x0 0x2000>;\n\t\tinterrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;/' \
@@ -196,12 +195,12 @@ diff -u $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-
 # Now we should compile everything:
 cd $JETSON_NANO_KERNEL_SOURCE || exit
 # Generates the config file (you should manually enable/disable some missing by pressing y/n and enter)
-make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra tegra_defconfig
-cp "${TEGRA_KERNEL_OUT:?}"/.config{,.orig}
-cp "${TARGET:?}"/.config.template "${TEGRA_KERNEL_OUT:?}"/
+make -C kernel/kernel-4.9/ ARCH=arm64 O=""${TEGRA_KERNEL_OUT:?}"" LOCALVERSION=-tegra tegra_defconfig
+cp ""${TEGRA_KERNEL_OUT:?}""/.config{,.orig}
+#cp "${TARGET:?}"/.config.template ""${TEGRA_KERNEL_OUT:?}""/
 
 # コンフィグをカスタマイズ
-make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" menuconfig
+make -C kernel/kernel-4.9/ ARCH=arm64 O=""${TEGRA_KERNEL_OUT:?}"" menuconfig
 
 # Symbol: KVM [=n]
 #   │ Type  : boolean
@@ -243,35 +242,48 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" menuconfig
 #   echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m\nCONFIG_VHOST_VSOCK=m" >>$JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig
 
 # Generates the Image that we're gonna place on /boot/Image
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target zImage
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra -j"$(nproc)" --output-sync=target zImage
 # Generates the drivers. This is needed because the old driver will not work with our new Image
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target modules
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra -j"$(nproc)" --output-sync=target modules
 # Generates our modified device file trees
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target dtbs
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra -j"$(nproc)" --output-sync=target dtbs
 # Installs the modules on the build folder $TARGET/Linux_for_Tegra/source/public/build
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra INSTALL_MOD_PATH=${KERNEL_MODULES_OUT:?} modules_install
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra INSTALL_MOD_PATH="${KERNEL_MODULES_OUT:?}" modules_install
 
 # Now that we have our Image, the drivers and the file trees, we should override them,
 # but before, make a manual backup of folders we're gonna change so you can rollback if something goes wrong.
 [ ! -d /boot.orig ] && sudo rsync -navh --delete /boot/ /boot.orig
 [ ! -d /lib.orig ] && sudo rsync -navh --delete /lib/ /lib.orig
 
-cd $KERNEL_MODULES_OUT/lib/ || exit
+cd "${KERNEL_MODULES_OUT:?}"/lib/ || exit
 ls -la /lib/firmware
-ls -la ./firmware
-rsync -n -rltDv ./firmware/ /lib/firmware
-sudo rsync -rltDv ./firmware/ /lib/firmware
+ls -la "${KERNEL_MODULES_OUT:?}"/lib/firmware
+rsync -n -rltDv "${KERNEL_MODULES_OUT:?}"/lib/firmware/ /lib/firmware
+sudo rsync -rltDv "${KERNEL_MODULES_OUT:?}"/lib/firmware/ /lib/firmware
 ls -la /lib/modules/4.9.299-tegra
-ls -la ./modules/4.9.299-tegra
-rsync -n -rltDv ./modules/ /lib/modules
-sudo rsync -rltDv ./modules/ /lib/modules
+ls -la "${KERNEL_MODULES_OUT:?}"/lib/modules/4.9.299-tegra
+rsync -n -rltDv "${KERNEL_MODULES_OUT:?}"/lib/modules/ /lib/modules
+sudo rsync -rltDv "${KERNEL_MODULES_OUT:?}"/lib/modules/ /lib/modules
 
 # Now we must also update the boot folder:
-cd $TEGRA_KERNEL_OUT/arch/arm64/ || exit
+cd "${TEGRA_KERNEL_OUT:?}"/arch/arm64/ || exit
 ls -la /boot
 ls -la ./boot
 rsync -nrltDv ./boot/ /boot
 sudo rsync -rltDv ./boot/ /boot
+
+# -a, --auto-compress
+# -z, --gzip
+# -h, --dereference
+# -f, --file=ARCHIVE
+# rm -rf "${TARGET:?}"/kernel-*.tar.gz
+
+rm -v "${TARGET:?}"/kernel*.tar.gz
+
+tar -acf "${TARGET:?}"/kernel-4.9.299-tegra-boot-lib.tar.gz -C "${TEGRA_KERNEL_OUT:?}"/arch/arm64 boot  -C "${KERNEL_MODULES_OUT:?}" lib
+
+cd "${TARGET:?}" || exit
+tar -acf "${TARGET:?}"/kernel-4.9.299-tegra.tar.gz "${TEGRA_KERNEL_OUT:?}" ${JETSON_NANO_KERNEL_SOURCE:?}/kernel/kernel-4.9
 
 find /lib/firmware /lib/modules /boot ! -user root
 
