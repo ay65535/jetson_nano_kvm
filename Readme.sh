@@ -24,6 +24,7 @@
 #
 
 # 現在動いているSDイメージとカーネルのバージョンを確認する
+cat /etc/os-release
 cat /etc/nv_tegra_release
 # => # R32 (release), REVISION: 7.3, GCID: 31982016, BOARD: t210ref, EABI: aarch64, DATE: Tue Nov 22 17:30:08 UTC 2022
 cat /proc/version
@@ -71,18 +72,37 @@ uname -a
 # [Release Notes]:
 #   https://docs.nvidia.com/jetson/archives/l4t-archived/l4t-3273/pdf/Jetson_Linux_Release_Notes_R32.7.3_GA.pdf
 
+export TARGET=/workspaces/jetson_nano_kvm
+export JETSON_NANO_KERNEL_SOURCE=$TARGET/Linux_for_Tegra/source/public
+#export JETSON_NANO_KERNEL_SOURCE=$TARGET/Linux_for_Tegra/source/public/kernel_src
+
+# 1.Set the shell variable with the command:
+export TEGRA_KERNEL_OUT=${JETSON_NANO_KERNEL_SOURCE:?}/build
+# Where:
+#   <outdir> is the desired destination for the compiled kernel.
+export KERNEL_MODULES_OUT=${JETSON_NANO_KERNEL_SOURCE:?}/modules
+
+# 2.If cross-compiling on a non-Jetson system, export the following environment variables:
+export CROSS_COMPILE="$TARGET"/l4t-gcc/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+export LOCALVERSION=-tegra
+# Where:
+#   <cross_prefix> is the absolute path of the ARM64 toolchain without the gcc suffix.
+#   For example, for the reference ARM64 toolchain, <cross_prefix> is:
+#     <toolchain_install_path>/bin/aarch64-linux-gnu-
+# See The L4T Toolchain for information on how to download and build the reference toolchains.
+# Note: NVIDIA recommends using the Linaro 7.3.1 2018.05 toolchain.
+
 #
 # Cleanup
 #
 
-TARGET=~/Linux_for_Tegra
+cd $TARGET
 ls -A "$TARGET"
-rm -rf "${TARGET:?}"/source
-ls -A "$TARGET"
-rm ~/public_sources.tbz2
-ls -A ~
+cp "$TEGRA_KERNEL_OUT"/.config.template $TARGET/
+# rm -rf "${JETSON_NANO_KERNEL_SOURCE:?}"
+# rm -rf "$TARGET/l4t-gcc"
+# rm "$TARGET"/public_sources.tbz2
 
-JETSON_NANO_KERNEL_SOURCE=$TARGET/source/public
 
 # The linux kernel has a config file which dictates which kernel options are enabled in the compilation process.
 # What we need to do is enable these options, which are
@@ -106,42 +126,23 @@ sudo apt update && sudo apt-get install -y build-essential bc git curl wget xxd 
 # クロスコンパイル時にのみ必要？
 #
 
-#wget -O ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
-wget -O ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz https://developer.nvidia.com/embedded/dlc/l4t-gcc-7-3-1-toolchain-64-bit
+#wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz https://developer.nvidia.com/embedded/dlc/l4t-gcc-7-3-1-toolchain-64-bit
 
-mkdir "$HOME/l4t-gcc"
-cd "$HOME/l4t-gcc" || exit
-tar -xf ~/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
-
-# 1.Set the shell variable with the command:
-TEGRA_KERNEL_OUT=$JETSON_NANO_KERNEL_SOURCE/build
-# Where:
-#   <outdir> is the desired destination for the compiled kernel.
-KERNEL_MODULES_OUT=$JETSON_NANO_KERNEL_SOURCE/modules
-
-# 2.If cross-compiling on a non-Jetson system, export the following environment variables:
-#export CROSS_COMPILE=$HOME/l4t-gcc/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
-#export LOCALVERSION=-tegra
-# Where:
-#   <cross_prefix> is the absolute path of the ARM64 toolchain without the gcc suffix.
-#   For example, for the reference ARM64 toolchain, <cross_prefix> is:
-#     <toolchain_install_path>/bin/aarch64-linux-gnu-
-# See The L4T Toolchain for information on how to download and build the reference toolchains.
-# Note: NVIDIA recommends using the Linaro 7.3.1 2018.05 toolchain.
+mkdir "$TARGET/l4t-gcc"
+cd "$TARGET/l4t-gcc" || exit
+tar -xf $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 
 # Gets the kernel
-cd ~ || exit
 #wget https://developer.download.nvidia.com/embedded/L4T/r32_Release_v7.1/Sources/T210/public_sources.tbz2  # 32.7.1
-wget -O public_sources.tbz2 https://developer.nvidia.com/downloads/remack-sdksjetpack-463r32releasev73sourcest210publicsourcestbz2 # 32.7.3
-tar -xf public_sources.tbz2
+wget -O "$TARGET"/public_sources.tbz2 https://developer.nvidia.com/downloads/remack-sdksjetpack-463r32releasev73sourcest210publicsourcestbz2 # 32.7.3
+cd "$TARGET" || exit
+tar -xf "$TARGET"/public_sources.tbz2
 
 ls -A $JETSON_NANO_KERNEL_SOURCE
-# mkdir -p $JETSON_NANO_KERNEL_SOURCE/kernel_src
-# ls -A $JETSON_NANO_KERNEL_SOURCE/kernel_src
-# cd $JETSON_NANO_KERNEL_SOURCE/kernel_src || exit
 cd $JETSON_NANO_KERNEL_SOURCE || exit
-ls -la ./kernel_src.tbz2
-tar -xf ./kernel_src.tbz2
+ls -la $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
+tar -xf $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
 # =>
 # hardware/
 # kernel/
@@ -151,8 +152,6 @@ tar -xf ./kernel_src.tbz2
 # Applies the new configs to tegra_defconfig so KVM option is enabled
 ls -A $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9
 cd $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9 || exit
-[ -f arch/arm64/configs/tegra_defconfig ] && ! grep 'CONFIG_KVM=y' arch/arm64/configs/tegra_defconfig &&
-  echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m\nCONFIG_VHOST_VSOCK=m" >>arch/arm64/configs/tegra_defconfig
 
 # Compiling the kernel now would already activate KVM, but we would still miss an important feature
 # that makes virtualization much faster: the irq chip.
@@ -192,17 +191,64 @@ diff -u $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-
 # as you see, we added more `reg` and `interrupts`. Now, when we compile the kernel image,
 # we'll also compile device tree files from this `dsti` file.
 
+# https://zenn.dev/tetsu_koba/articles/7d49c86da7a4b0
+
 # Now we should compile everything:
 cd $JETSON_NANO_KERNEL_SOURCE || exit
 # Generates the config file (you should manually enable/disable some missing by pressing y/n and enter)
-make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra tegra_defconfig
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra tegra_defconfig
+cp "${TEGRA_KERNEL_OUT:?}"/.config{,.orig}
+cp "${TARGET:?}"/.config.template "${TEGRA_KERNEL_OUT:?}"/
+
+# コンフィグをカスタマイズ
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" menuconfig
+
+# Symbol: KVM [=n]
+#   │ Type  : boolean
+#   │ Prompt: Kernel-based Virtual Machine (KVM) support
+#   │   Location:
+#   │ (1) -> Virtualization (VIRTUALIZATION [=y])
+#   │   Defined at arch/arm64/kvm/Kconfig:22
+#   │   Depends on: VIRTUALIZATION [=y] && OF [=y]
+#   │   Selects: MMU_NOTIFIER [=y] && PREEMPT_NOTIFIERS [=n] && ANON_INODES [=y] && HAVE_KVM_CPU_RELAX_INTERCEPT [=n] && HAVE_KVM_ARCH_TLB_FLUSH_ALL [=n] && KVM_MMIO [=n] && KVM_ARM_HOST [ │
+
+# Symbol: VHOST_NET [=n]
+#   │ Type  : tristate
+#   │ Prompt: Host kernel accelerator for virtio net
+#   │   Location:
+#   │ (1) -> Virtualization (VIRTUALIZATION [=y])
+#   │   Defined at drivers/vhost/Kconfig:1
+#   │   Depends on: VIRTUALIZATION [=y] && NET [=y] && EVENTFD [=y] && (TUN [=y] || !TUN [=y]) && (MACVTAP [=m] || !MACVTAP [=m])
+#   │   Selects: VHOST [=n]
+
+# Symbol: VHOST_VSOCK [=n]
+#   │ Type  : tristate
+#   │ Prompt: vhost virtio-vsock driver
+#   │   Location:
+#   │ (1) -> Virtualization (VIRTUALIZATION [=y])
+#   │   Defined at drivers/vhost/Kconfig:22
+#   │   Depends on: VIRTUALIZATION [=y] && VSOCKETS [=n] && EVENTFD [=y]
+#   │   Selects: VIRTIO_VSOCKETS_COMMON [=n] && VHOST [=n]
+
+# Symbol: VSOCKETS [=n]
+#   │ Type  : tristate
+#   │ Prompt: Virtual Socket protocol
+#   │   Location:
+#   │     -> Networking support (NET [=y])
+#   │ (1)   -> Networking options
+#   │   Defined at net/vmw_vsock/Kconfig:5
+#   │   Depends on: NET [=y]
+
+# [ -f arch/arm64/configs/tegra_defconfig ] && ! grep 'CONFIG_KVM=y' $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig &&
+#   echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m\nCONFIG_VHOST_VSOCK=m" >>$JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig
+
 # Generates the Image that we're gonna place on /boot/Image
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target zImage
 # Generates the drivers. This is needed because the old driver will not work with our new Image
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target modules
 # Generates our modified device file trees
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra -j4 --output-sync=target dtbs
-# Installs the modules on the build folder ~/Linux_for_Tegra/source/public/build
+# Installs the modules on the build folder $TARGET/Linux_for_Tegra/source/public/build
 make -C kernel/kernel-4.9/ ARCH=arm64 O=${TEGRA_KERNEL_OUT:?} LOCALVERSION=-tegra INSTALL_MOD_PATH=${KERNEL_MODULES_OUT:?} modules_install
 
 # Now that we have our Image, the drivers and the file trees, we should override them,
