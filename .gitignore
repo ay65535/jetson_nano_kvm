@@ -1,4 +1,5 @@
 /gcc-linaro-*.tar.xz
+/kernel*.tar.gz
 /l4t-gcc/
 /Linux_for_Tegra/source/public/*
 !/Linux_for_Tegra/source/public/build/
