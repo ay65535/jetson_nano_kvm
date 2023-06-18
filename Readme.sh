@@ -151,7 +151,7 @@ tar -xf "$TARGET"/public_sources.tbz2
 
 ls -AF $JETSON_NANO_KERNEL_SOURCE
 cd $JETSON_NANO_KERNEL_SOURCE || exit
-ls -la $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
+ls -lAF $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
 tar -xf $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
 # =>
 # hardware/
@@ -277,22 +277,26 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-te
 [ ! -d /boot.orig ] && sudo rsync -navh --delete /boot/ /boot.orig
 [ ! -d /lib.orig ] && sudo rsync -navh --delete /lib/ /lib.orig
 
+# Reset
+sudo rsync -avh --delete /lib.orig/ /lib
+sudo rsync -avh --delete /boot.orig/ /boot
+
 cd "${KERNEL_MODULES_OUT:?}"/lib/ || exit
-ls -la /lib/firmware
-ls -la "${KERNEL_MODULES_OUT:?}"/lib/firmware
+ls -lAF /lib/firmware
+ls -lAF "${KERNEL_MODULES_OUT:?}"/lib/firmware
 rsync -n -rltDv "${KERNEL_MODULES_OUT:?}"/lib/firmware/ /lib/firmware
 sudo rsync -rltDv "${KERNEL_MODULES_OUT:?}"/lib/firmware/ /lib/firmware
-ls -la /lib/modules/4.9.299-tegra
-ls -la "${KERNEL_MODULES_OUT:?}"/lib/modules/4.9.299-tegra
+ls -lAF /lib/modules/4.9.299-tegra
+ls -lAF "${KERNEL_MODULES_OUT:?}"/lib/modules/4.9.299-tegra
 rsync -n -rltDv "${KERNEL_MODULES_OUT:?}"/lib/modules/ /lib/modules
 sudo rsync -rltDv "${KERNEL_MODULES_OUT:?}"/lib/modules/ /lib/modules
 
 # Now we must also update the boot folder:
 cd "${TEGRA_KERNEL_OUT:?}"/arch/arm64/ || exit
-ls -la /boot
-ls -la ./boot
-rsync -nrltDv ./boot/ /boot
-sudo rsync -rltDv ./boot/ /boot
+ls -lAF /boot
+ls -lAF "${TEGRA_KERNEL_OUT:?}"/arch/arm64/boot
+rsync -nrltDv "${TEGRA_KERNEL_OUT:?}"/arch/arm64/boot/ /boot
+sudo rsync -rltDv "${TEGRA_KERNEL_OUT:?}"/arch/arm64/boot/ /boot
 
 # -a, --auto-compress
 # -z, --gzip
@@ -336,10 +340,10 @@ sudo dmesg | grep -i kernel | grep DTS
 #       MENU LABEL primary kernel
 #       LINUX /boot/Image
 #       INITRD /boot/initrd
-#       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 loglevel=7 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0
+#       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0
 
 ls -laF /boot/tegra210-p3448-0000-p3449-0000-a02.dt*
-code /boot/extlinux/extlinux.conf
+grep tegra210-p3448-0000-p3449-0000-a02 /boot/extlinux/extlinux.conf
 # to
 # TIMEOUT 30
 # DEFAULT primary
@@ -350,8 +354,14 @@ code /boot/extlinux/extlinux.conf
 #       MENU LABEL primary kernel
 #       LINUX /boot/Image
 #       INITRD /boot/initrd
-#       FDT /boot/tegra210-p3448-0000-p3449-0000-a00.dtb
-#       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 loglevel=7 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0
+#       FDT /boot/tegra210-p3448-0000-p3449-0000-a02.dtb
+#       APPEND ${cbootargs} quiet root=/dev/mmcblk0p1 rw rootwait rootfstype=ext4 console=ttyS0,115200n8 console=tty0 fbcon=map:0 net.ifnames=0 
+#
+# LABEL backup
+#       MENU LABEL backup kernel
+#       LINUX /boot.orig/Image
+#       INITRD /boot.orig/initrd
+#       APPEND ${cbootargs}
 
 # that is, add the path to your dtb file. In my case, `FDT /boot/tegra210-p3448-0000-p3449-0000-a00.dtb`.
 
@@ -377,17 +387,17 @@ ls /proc/device-tree/interrupt-controller
 # => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # and see that the node `interrupts`, which didn't exist before, was added. This means the irc interrupt activation worked.
 
-sudo dmesg | grep -i interrupts
+sudo dmesg | grep -i interrupt
 # After:
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 
-sudo dmesg | grep -iE 'vhost|vsock|kvm|virtio'
+sudo dmesg | grep -iE 'vhost|vsock|kvm|virt'
 
 # You can run qemu/firecracker now. I only tested with firecracker though.
 
-lsmod | grep -E 'vhost|vsock|kvm|virtio'
+lsmod | grep -E 'vhost|vsock|kvm|virt'
 # =>
 # vhost_net              15023  0
 # vhost                  52361  1 vhost_net
