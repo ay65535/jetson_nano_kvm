@@ -28,17 +28,13 @@ cat /etc/os-release
 cat /etc/nv_tegra_release
 # => # R32 (release), REVISION: 7.3, GCID: 31982016, BOARD: t210ref, EABI: aarch64, DATE: Tue Nov 22 17:30:08 UTC 2022
 cat /proc/version
-# =>
-# Linux version 4.9.299-tegra (buildbrain@mobile-u64-5333-d8000)
-# (gcc version 7.3.1 20180425 [linaro-7.3-2018.05 revision d29120a424ecfbc167ef90065c0eeb7f91977701] (Linaro GCC 7.3-2018.05) )
-# #1 SMP PREEMPT Tue Nov 22 09:24:39 PST 2022
-# =>
-# Linux version 4.9.299-tegra (jetson@jetson-nano)
-# (gcc version 7.5.0 (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) )
-# #1 SMP PREEMPT Sat Jun 17 16:52:07 JST 2023
+# => Linux version 4.9.299-tegra (buildbrain@mobile-u64-5333-d8000) (gcc version 7.3.1 20180425 [linaro-7.3-2018.05 revision d29120a424ecfbc167ef90065c0eeb7f91977701] (Linaro GCC 7.3-2018.05) ) #1 SMP PREEMPT Tue Nov 22 09:24:39 PST 2022
+# => Linux version 4.9.299-tegra (jetson@jetson-nano) (gcc version 7.5.0 (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) ) #1 SMP PREEMPT Sat Jun 17 16:52:07 JST 2023
+# => Linux version 4.9.299-tegra (codespace@codespaces-600304) (gcc version 7.3.1 20180425 [linaro-7.3-2018.05 revision d29120a424ecfbc167ef90065c0eeb7f91977701] (Linaro GCC 7.3-2018.05) ) #1 SMP PREEMPT Sun Jun 18 04:26:14 UTC 2023
 uname -a
 # => Linux jetson-nano 4.9.299-tegra #1 SMP PREEMPT Tue Nov 22 09:24:39 PST 2022 aarch64 aarch64 aarch64 GNU/Linux
 # => Linux jetson-nano 4.9.299-tegra #1 SMP PREEMPT Sat Jun 17 16:52:07 JST 2023 aarch64 aarch64 aarch64 GNU/Linux
+# => Linux jetson-nano 4.9.299-tegra #1 SMP PREEMPT Sun Jun 18 04:26:14 UTC 2023 aarch64 aarch64 aarch64 GNU/Linux
 
 #
 # Documents
@@ -96,9 +92,9 @@ export LOCALVERSION=-tegra
 # Cleanup
 #
 
-cd $TARGET
+cd $TARGET || exit
 ls -A "$TARGET"
-cp "${TEGRA_KERNEL_OUT:?}"/.config.template $TARGET/
+# cp "${TEGRA_KERNEL_OUT:?}"/.config.template $TARGET/
 # rm -rf "${JETSON_NANO_KERNEL_SOURCE:?}"
 # rm -rf "$TARGET/l4t-gcc"
 # rm "$TARGET"/public_sources.tbz2
@@ -280,10 +276,10 @@ sudo rsync -rltDv ./boot/ /boot
 
 rm -v "${TARGET:?}"/kernel*.tar.gz
 
-tar -acf "${TARGET:?}"/kernel-4.9.299-tegra-boot-lib.tar.gz -C "${TEGRA_KERNEL_OUT:?}"/arch/arm64 boot  -C "${KERNEL_MODULES_OUT:?}" lib
+# tar -acf "${TARGET:?}"/kernel-4.9.299-tegra-boot-lib.tar.gz -C "${TEGRA_KERNEL_OUT:?}"/arch/arm64 boot  -C "${KERNEL_MODULES_OUT:?}" lib
 
 cd "${TARGET:?}" || exit
-tar -acf "${TARGET:?}"/kernel-4.9.299-tegra.tar.gz "${TEGRA_KERNEL_OUT:?}" ${JETSON_NANO_KERNEL_SOURCE:?}/kernel/kernel-4.9
+tar -acf "${TARGET:?}"/kernel-4.9.299-tegra.tar.gz "${TEGRA_KERNEL_OUT:?}" ${JETSON_NANO_KERNEL_SOURCE:?}/kernel/kernel-4.9 "${KERNEL_MODULES_OUT:?}"/lib
 
 find /lib/firmware /lib/modules /boot ! -user root
 
@@ -296,6 +292,9 @@ sudo dmesg | grep -i kernel | grep DTS
 # =>
 # [    0.232381] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
 # [    0.440429] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# =>
+# [    0.231954] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
+# [    0.444484] DTS File Name: /dvs/git/dirty/git-master_linux/kernel/kernel-4.9/arch/arm64/boot/dts/../../../../../../hardware/nvidia/platform/t210/porg/kernel-dts/tegra210-p3448-0000-p3449-0000-a02.dts
 
 # Wait, wtf? Why this is a local file? I don't know what's happening, but this should show you which one is being used.
 # You're gonna need its name. The file is already at `/boot`.
@@ -333,7 +332,12 @@ code /boot/extlinux/extlinux.conf
 # Note that you can add a second testing profile, which can be selected at boot time if you have a serial device to plug into the jetson nano like in this video https://www.youtube.com/watch?v=Kwpxhw41W50. When you boot you can select your second `LABEL` by typing its number. This is useful if you want to test different `Image`s without substituting the original one like we did.
 
 # Now reboot, and then run:
-ls /dev/kvm
+ls /dev | grep -E '^vhost|kvm|vsock'
+# =>
+# kvm
+# vhost-net
+# vhost-vsock
+# vsock
 # to confirm if the `kvm` file exists. This means it's working. You should also run
 
 ls /proc/device-tree/interrupt-controller
@@ -344,10 +348,12 @@ ls /proc/device-tree/interrupt-controller
 # After:
 # => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
+# => compatible  '#interrupt-cells'   interrupt-controller   interrupt-parent   linux,phandle   name   phandle   reg   status
 # and see that the node `interrupts`, which didn't exist before, was added. This means the irc interrupt activation worked.
 
 sudo dmesg | grep -i interrupts
 # After:
+# => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 # => [    0.000000] /interrupt-controller@60004000: 192 interrupts forwarded to /interrupt-controller
 
@@ -364,6 +370,13 @@ lsmod | grep -E 'vhost|vsock|kvm|virtio'
 # vhost_net              15023  0
 # vhost                  52361  1 vhost_net
 # macvtap                21473  1 vhost_net
+# =>
+# vhost_vsock            13434  0
+# vmw_vsock_virtio_transport_common    30778  1 vhost_vsock
+# vsock                  36419  2 vhost_vsock,vmw_vsock_virtio_transport_common
+# vhost_net              15023  0
+# vhost                  52489  2 vhost_vsock,vhost_net
+# macvtap                21537  1 vhost_net
 
 cat /etc/modules
 # =>
