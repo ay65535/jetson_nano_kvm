@@ -1,1 +1,9 @@
-/source/
+/gcc-linaro-*.tar.xz
+/l4t-gcc/
+/Linux_for_Tegra/source/public/*
+!/Linux_for_Tegra/source/public/build/
+/Linux_for_Tegra/source/public/build/*
+!/Linux_for_Tegra/source/public/build/.config
+!/Linux_for_Tegra/source/public/build/.config.orig
+!/Linux_for_Tegra/source/public/build/.config.template
+/public_sources.tbz2
