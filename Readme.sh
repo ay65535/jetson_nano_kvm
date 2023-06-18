@@ -25,6 +25,20 @@
 
 # 現在動いているSDイメージとカーネルのバージョンを確認する
 cat /etc/os-release
+# =>
+# NAME="Ubuntu"
+# VERSION="18.04.6 LTS (Bionic Beaver)"
+# ID=ubuntu
+# ID_LIKE=debian
+# PRETTY_NAME="Ubuntu 18.04.6 LTS"
+# VERSION_ID="18.04"
+# HOME_URL="https://www.ubuntu.com/"
+# SUPPORT_URL="https://help.ubuntu.com/"
+# BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+# PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+# VERSION_CODENAME=bionic
+# UBUNTU_CODENAME=bionic
+
 cat /etc/nv_tegra_release
 # => # R32 (release), REVISION: 7.3, GCID: 31982016, BOARD: t210ref, EABI: aarch64, DATE: Tue Nov 22 17:30:08 UTC 2022
 cat /proc/version
@@ -79,8 +93,8 @@ export TEGRA_KERNEL_OUT=${JETSON_NANO_KERNEL_SOURCE:?}/build
 export KERNEL_MODULES_OUT=${JETSON_NANO_KERNEL_SOURCE:?}/modules
 
 # 2.If cross-compiling on a non-Jetson system, export the following environment variables:
-export CROSS_COMPILE="$TARGET"/l4t-gcc/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
-export LOCALVERSION=-tegra
+# export CROSS_COMPILE="$TARGET"/l4t-gcc/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+# export LOCALVERSION=-tegra
 # Where:
 #   <cross_prefix> is the absolute path of the ARM64 toolchain without the gcc suffix.
 #   For example, for the reference ARM64 toolchain, <cross_prefix> is:
@@ -98,6 +112,7 @@ ls -A "$TARGET"
 # rm -rf "${JETSON_NANO_KERNEL_SOURCE:?}"
 # rm -rf "$TARGET/l4t-gcc"
 # rm "$TARGET"/public_sources.tbz2
+# rm "$TARGET"/kernel*.tar.gz
 
 # The linux kernel has a config file which dictates which kernel options are enabled in the compilation process.
 # What we need to do is enable these options, which are
@@ -121,12 +136,12 @@ sudo apt update && sudo apt-get install -y build-essential bc git curl wget xxd 
 # クロスコンパイル時にのみ必要？
 #
 
-#wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
-wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz https://developer.nvidia.com/embedded/dlc/l4t-gcc-7-3-1-toolchain-64-bit
+# #wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz http://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+# wget -O $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz https://developer.nvidia.com/embedded/dlc/l4t-gcc-7-3-1-toolchain-64-bit
 
-mkdir "$TARGET/l4t-gcc"
-cd "$TARGET/l4t-gcc" || exit
-tar -xf $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
+# mkdir "$TARGET/l4t-gcc"
+# cd "$TARGET/l4t-gcc" || exit
+# tar -xf $TARGET/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu.tar.xz
 
 # Gets the kernel
 #wget https://developer.download.nvidia.com/embedded/L4T/r32_Release_v7.1/Sources/T210/public_sources.tbz2  # 32.7.1
@@ -134,7 +149,7 @@ wget -O "$TARGET"/public_sources.tbz2 https://developer.nvidia.com/downloads/rem
 cd "$TARGET" || exit
 tar -xf "$TARGET"/public_sources.tbz2
 
-ls -A $JETSON_NANO_KERNEL_SOURCE
+ls -AF $JETSON_NANO_KERNEL_SOURCE
 cd $JETSON_NANO_KERNEL_SOURCE || exit
 ls -la $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
 tar -xf $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
@@ -145,7 +160,7 @@ tar -xf $JETSON_NANO_KERNEL_SOURCE/kernel_src.tbz2
 # nvcommon_build.sh
 
 # Applies the new configs to tegra_defconfig so KVM option is enabled
-ls -A $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9
+ls -AF $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9
 cd $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9 || exit
 
 # Compiling the kernel now would already activate KVM, but we would still miss an important feature
@@ -191,12 +206,12 @@ diff -u $JETSON_NANO_KERNEL_SOURCE/hardware/nvidia/soc/t210/kernel-dts/tegra210-
 # Now we should compile everything:
 cd $JETSON_NANO_KERNEL_SOURCE || exit
 # Generates the config file (you should manually enable/disable some missing by pressing y/n and enter)
-make -C kernel/kernel-4.9/ ARCH=arm64 O=""${TEGRA_KERNEL_OUT:?}"" LOCALVERSION=-tegra tegra_defconfig
-cp ""${TEGRA_KERNEL_OUT:?}""/.config{,.orig}
-#cp "${TARGET:?}"/.config.template ""${TEGRA_KERNEL_OUT:?}""/
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" LOCALVERSION=-tegra tegra_defconfig
+cp "${TEGRA_KERNEL_OUT:?}"/.config{,.orig}
+#cp "${TARGET:?}"/.config.template "${TEGRA_KERNEL_OUT:?}"/
 
 # コンフィグをカスタマイズ
-make -C kernel/kernel-4.9/ ARCH=arm64 O=""${TEGRA_KERNEL_OUT:?}"" menuconfig
+make -C kernel/kernel-4.9/ ARCH=arm64 O="${TEGRA_KERNEL_OUT:?}" menuconfig
 
 # Symbol: KVM [=n]
 #   │ Type  : boolean
@@ -233,6 +248,17 @@ make -C kernel/kernel-4.9/ ARCH=arm64 O=""${TEGRA_KERNEL_OUT:?}"" menuconfig
 #   │ (1)   -> Networking options
 #   │   Defined at net/vmw_vsock/Kconfig:5
 #   │   Depends on: NET [=y]
+
+# Symbol: MACVTAP [=m]
+#   │ Type  : tristate
+#   │ Prompt: MAC-VLAN based tap driver
+#   │   Location:
+#   │     -> Device Drivers
+#   │       -> Network device support (NETDEVICES [=y])
+#   │         -> Network core driver support (NET_CORE [=y])
+#   │ (1)       -> MAC-VLAN support (MACVLAN [=m])
+#   │   Defined at drivers/net/Kconfig:134
+#   │   Depends on: NETDEVICES [=y] && NET_CORE [=y] && MACVLAN [=m] && INET [=y]
 
 # [ -f arch/arm64/configs/tegra_defconfig ] && ! grep 'CONFIG_KVM=y' $JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig &&
 #   echo -e "CONFIG_KVM=y\nCONFIG_VHOST_NET=m\nCONFIG_VHOST_VSOCK=m" >>$JETSON_NANO_KERNEL_SOURCE/kernel/kernel-4.9/arch/arm64/configs/tegra_defconfig

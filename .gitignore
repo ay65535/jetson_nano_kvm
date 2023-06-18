@@ -6,5 +6,6 @@
 /Linux_for_Tegra/source/public/build/*
 !/Linux_for_Tegra/source/public/build/.config
 !/Linux_for_Tegra/source/public/build/.config.orig
-!/Linux_for_Tegra/source/public/build/.config.template
+!/Linux_for_Tegra/source/public/build/.config*.template
 /public_sources.tbz2
+*passw*d*
