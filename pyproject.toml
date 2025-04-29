@@ -1,0 +1,11 @@
+[project]
+name = "jetson-nano-kvm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bash-kernel>=0.10.0",
+    "nbconvert>=7.16.6",
+    "notebook>=7.4.1",
+]
