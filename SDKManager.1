@@ -1,0 +1,250 @@
+NVIDIA SDK MANAGER
+
+  NVIDIA SDK Manager is an all-in-one tool that bundles developer software and
+  provides an end-to-end development environment setup solution for NVIDIA
+  SDKs.
+
+General Options
+
+  -h, --help                                      Displays this usage guide.
+  --ver                                           Output the version of the
+                                                  installed SDK Manager client
+  --settings                                      Configure SDK Manager
+                                                  settings in the terminal. It
+                                                  supports to configure the
+                                                  parameters from SDK Manager
+                                                  settings UI, such as proxy
+                                                  settings, concurrent
+                                                  downloads, privacy settings.
+  --query interactive|non-interactive             Optional. Prints available
+                                                  options for the user.
+                                                  interactive - gets the
+                                                  install command by inquiry
+                                                  session flow.
+                                                  non-interactive - prints all
+                                                  options available for the
+                                                  user.
+                                                  Using without value execute
+                                                  non-interactive.
+
+                                                  Example:
+                                                  --query interactive
+                                                  --login-type devzone
+                                                  --query non-interactive
+                                                  --product Jetson
+                                                  --query non-interactive
+                                                  --product DOCA --version
+                                                  2.0.2
+                                                  --query non-interactive
+                                                  --product Switch --action
+                                                  uninstall
+  --show-all-versions                             Prints all available product
+                                                  versions for the user. If it
+                                                  is not set, SDK Manager will
+                                                  only list the primary product
+                                                  versions.
+  --export-logs folder_path                       Export the log files to
+                                                  folder_path when the
+                                                  install/uninstall session is
+                                                  completed. Logs will be
+                                                  exported to the download
+                                                  folder if folder_path is not
+                                                  set.
+  --exit-on-finish                                Automatically exit from SDK
+                                                  Manager when the
+                                                  install/uninstall session is
+                                                  completed.
+  --user user_email                               Set the user email to log in.
+                                                  Valid only for NVONLINE
+                                                  users with
+                                                  partners.nvidia.com accounts.
+  --password string                               Set the user login password.
+                                                  Valid only for NVONLINE users
+                                                  with partners.nvidia.com
+                                                  accounts.
+  --login-type devzone|nvonline|offline           nvonline
+  --stay-logged-in true|false                     Keep the user account logged
+                                                  in for the next running
+                                                  session. Default is true.
+                                                  Please run --stay-logged-in
+                                                  false to disable this option.
+  --logout                                        Log out the user account from
+                                                  SDK Manager.
+  --download-folder string                        This option allows to set the
+                                                  folder path for the
+                                                  downloaded files.
+                                                  Example:
+                                                  --downloadfolder /my-mounted-
+                                                  drive/Shared/nvidia/sdk-
+                                                  manager
+                                                  If --download-folder is not
+                                                  set, SDK Manager will use the
+                                                  default folder:
+                                                  $/Downloads/nvidia/sdkm_downloads.
+  --archived-versions                             Use this option to display
+                                                  only archived SDK versions
+                                                  which are not shown on the
+                                                  standard run.
+  --cli                                           Enable SDK Manager runs in
+                                                  CLI mode. If you want to run
+                                                  it in unattended mode, you
+                                                  will need to provide more
+                                                  parameters which are defined
+                                                  as optional. You can also use
+                                                  the --response-file option
+                                                  to provide all required
+                                                  parameters to run
+                                                  unattendedly.
+  --action install|uninstall|downloadonly         This allows SDK Manager to
+                                                  run install, uninstall, or
+                                                  download action in the
+                                                  session. This option should
+                                                  be used together with other
+                                                  options from "Additional
+                                                  Arguments".
+  --sudo-password string                          Set the sudo password to skip
+                                                  the authentication
+                                                  prompt.Note that the password
+                                                  is in clear text and visible
+                                                  in the terminal window.
+  --collect-usage-data enable|disable             Enable or disable the
+                                                  collection of the usage data
+                                                  and send to SDK Manager
+                                                  server.
+  --check-for-updates true|false                  Check for the updates of SDK
+                                                  Manager client. Default is
+                                                  true. Please run
+                                                  --check-for-updates false to
+                                                  disable this option.
+                                                  To skip the update query,
+                                                  please run this option
+                                                  together with --auto option.
+  --list-connected all|Jetson|Holoscan|IGX|DOCA   List information for
+                                                  connected devices. Default is
+                                                  all. It also supports to
+                                                  list only relavant devices
+                                                  for the specific product.
+  --extra-config string                           Use extra configuration to
+                                                  overwrite the sofware and
+                                                  hardware data for
+                                                  installation/uninstallation.
+                                                  This can be used to support
+                                                  the installation of a third-
+                                                  party carrier board,
+                                                  customized packages, and so
+                                                  on. For more details, please
+                                                  refer to the user guide.
+
+Specific arguments for install/uninstall:
+
+  --product product_name                  Set the product category to be
+                                          installed in command-line mode.
+  --version string                        Set the product version.  The value
+                                          of --version could be a combination
+                                          of product version, edition, target
+                                          type and build number, separated by
+                                          '_'.
+                                          Use --cli or --query to get available
+                                          version values.
+                                          DRIVE example:
+                                          --version 6.0.6
+                                          Jetson example:
+                                          --version 4.3
+                                          Holoscan example:
+                                          --version IGPU_1.2
+                                          IGX example:
+                                          --version 1.0
+                                          DOCA example:
+                                          --version 2.0.2
+                                          Ethernet Switch example:
+                                          --version 4.6.02
+                                          Aerial example:
+                                          --version 22-4
+  --target-os string                      Set the target hardware operating
+                                          system.
+                                          Example:
+                                          --target-os Linux
+  --host                                  When this parameter is set, the host
+                                          components will be selected.
+  --target target_hardware                Use this parameter to select the
+                                          specific target hardware.
+                                          DRIVE example:
+                                          --target DRIVE_AGX_ORIN_DEVKITS
+                                          Jetson example:
+                                          --target JETSON_AGX_ORIN_TARGETS
+                                          Holoscan example:
+                                          --target IGX_ORIN_DEVKIT_ES
+                                          IGX example:
+                                          --target IGX_ORIN_DEVKIT_IGPU_TARGETS
+                                          DOCA example:
+                                          --target BLUEFIELD3_DPU_BMC_100GBE
+                                          Ethernet Switch example:
+                                          --target SWITCH_5XXX_TARGETS
+  --install-method string                 Select the SDK install method.
+  --flash                                 Whether to flash the target. If the
+                                          option is not set, SDK Manager will
+                                          skipping the flashing.
+  --usb-port string                       Select the usb port if multiple
+                                          boards are connected. The usb_port_id
+                                          can be retrieved from
+                                          --list-connected command.
+                                          Jetson example:
+                                          --usb-port 1-2
+  --serial-port string                    Select the serial port name if
+                                          multiple USBs are connected.
+                                          Aerial example:
+                                          --serial-port /dev/ttyUSB1
+  --additional-sdk additional_sdk_title   Specify additional SDKs to install.
+                                          Multiple entries are allowed.
+                                          Available additional_sdk_title can be
+                                          retrieved from --cli command.
+  --select section_or_group_title         Select the specified section or group
+                                          to the installation list. Multiple
+                                          entries are allowed. Available
+                                          section_title and group_title can be
+                                          retrieved from --cli command.
+  --deselect section_or_group_title       Deselect the specified section or
+                                          group from the installation list.
+                                          Multiple entries are allowed.
+                                          Available section_title and
+                                          group_title can be retrieved from
+                                          --cli command.
+  --license accept|reject                 Set this option to accept the terms
+                                          and conditions of the NVIDIA software
+                                          licenses. If the option is not set,
+                                          SDK Manager will prompt the license
+                                          pages to you to review and confirm.
+  --target-image-folder string            This option allows you to set the
+                                          host location of the target hardware
+                                          image for flashing.
+                                          If this folder is not set, SDK
+                                          Manager will use the default folder:
+                                          $/nvidia/nvidia_sdk/
+  --response-file string                  Use the response file from file_path
+                                          to run SDK Manager in automated and
+                                          unattended mode. Response file
+                                          samples can be found in the folder
+                                          /opt/nvidia/sdkmanager/.
+  --export-response-file folder_path      Create the response file per user's
+                                          selections and export the response
+                                          file to folder_path before the
+                                          session is successfully completed. If
+                                          folder_path is not set, the response
+                                          file will be created under the
+                                          download folder. The host sudo
+                                          password will not be saved to the
+                                          response file. You can add it to the
+                                          response file manually or use
+                                          --sudo-password command line option
+                                          to skip the sudo prompt.
+  --auto                                  It auto completes all the prompts
+                                          with default values. Used in CLI mode
+                                          only.
+
+Example
+
+  $ sdkmanager [--cli]
+  $ sdkmanager [--user user@user.com] [--query]
+  $ sdkmanager [--check-for-updates]
+  $ sdkmanager [--settings]
+  $ sdkmanager [--help]
