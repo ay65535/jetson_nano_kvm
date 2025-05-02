@@ -1,0 +1,7 @@
+{
+  "name": "tegra-kernel-builder",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "tegra"
+}
