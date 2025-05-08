@@ -184,6 +184,8 @@ cython_debug/
 /gcc-linaro-*.tar.xz
 /kernel*.tar.gz
 /l4t-gcc/
+/Linux_for_Tegra/kernel/
+/Linux_for_Tegra/source/public.orig/
 /Linux_for_Tegra/source/public/*
 /Linux_for_Tegra/source/public/build/*
 !/Linux_for_Tegra/source/public/build/
